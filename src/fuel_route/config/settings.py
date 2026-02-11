@@ -41,6 +41,68 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 
+# 2. Configuration REST Framework
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': [
+        'rest_framework.renderers.JSONRenderer',  # ← Seulement JSON (pas HTML)
+    ],
+    'DEFAULT_PARSER_CLASSES': [
+        'rest_framework.parsers.JSONParser',
+    ],
+}
+
+# Cache Configuration (Database-backed for persistence)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'api_cache_table',
+        'TIMEOUT': 3600,  # 1 hour
+    }
+}
+
+# Cache timeouts
+GEOCODING_CACHE_TIMEOUT = 86400  # 24 hours
+ROUTE_CACHE_TIMEOUT = 3600       # 1 hour
+
+# 4. Constantes de l'assignment (requirements)
+VEHICLE_RANGE_MILES = 500   # ← "vehicle has a maximum range of 500 miles"
+VEHICLE_MPG = 10            # ← "vehicle achieves 10 miles per gallon"
+
+# 5. MapQuest API Key (depuis .env)
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+# MapQuest API Configuration
+MAPQUEST_API_KEY = os.getenv('MAPQUEST_API_KEY', '')
+MAPQUEST_BASE_URL = 'http://www.mapquestapi.com/directions/v2/route'
+
+# Logging Configuration
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{levelname}] {asctime} {module} - {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'loggers': {
+        'fuel_optimizer': {
+            'handlers': ['console'],
+            'level': 'INFO',
+        },
+    },
+}
+
+
+
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
