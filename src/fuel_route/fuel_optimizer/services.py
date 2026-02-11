@@ -4,6 +4,7 @@ Hybrid algorithm combining bounding box filtering and deviation scoring.
 """
 import hashlib
 import logging
+import math
 from typing import Dict, List, Tuple, Optional
 
 import requests
@@ -169,12 +170,16 @@ class RouteOptimizationService:
         Combines:
         - Bounding box filtering (Project 2 - fast)
         - Deviation scoring (Project 1 - intelligent)
+        - Fast distance approximation for pre-filtering
         
         Algorithm:
         1. Check if fuel stops needed (distance > 500 miles)
         2. Filter stations within route bounding box
-        3. Sample route points every 50 miles
-        4. When fuel < 25% tank, search nearby stations
+        3. Sample route points every 75 miles
+        4. When fuel < 25% tank, search nearby stations:
+           a) Pre-filter with rectangular bounds (DB query)
+           b) Fast distance approximation
+           c) Precise geodesic for final candidates
         5. Score stations: price + (route_deviation * 0.1)
         6. Select best station (lowest score)
         """
@@ -183,7 +188,7 @@ class RouteOptimizationService:
             logger.info(f"Short trip ({total_distance:.1f} miles), no fuel stops needed")
             return []
 
-        # Bounding box filtering (Project 2 optimization)
+        # Bounding box filtering 
         min_lon = min(coord[0] for coord in route_coordinates)
         max_lon = max(coord[0] for coord in route_coordinates)
         min_lat = min(coord[1] for coord in route_coordinates)
@@ -210,8 +215,8 @@ class RouteOptimizationService:
         remaining_range = self.vehicle_range
         last_stop_coords = start_coords
         
-        # Sample points every 50 miles (Project 1 approach)
-        sample_interval = max(1, len(route_coordinates) // int(total_distance / 50))
+        # Sample points every 75 miles (optimized for performance)
+        sample_interval = max(1, len(route_coordinates) // int(total_distance / 75))
         sampled_points = route_coordinates[::sample_interval]
         
         for i, point in enumerate(sampled_points):
@@ -222,20 +227,43 @@ class RouteOptimizationService:
             if remaining_range < (self.vehicle_range * 0.25) and progress < total_distance:
                 logger.debug(f"Low fuel at {progress:.1f} miles, searching for station...")
                 
-                # Find nearby stations
-                nearby_stations = []
+                # Find nearby stations (OPTIMIZED with 3-stage filtering)
                 search_radius = self.vehicle_range * 0.2  # 20% of range = 100 miles
+                point_lat, point_lon = point[1], point[0]
+                point_coords = (point_lat, point_lon)
                 
-                point_coords = (point[1], point[0])  # Convert to (lat, lon)
+                # STAGE 1: Pre-filter with rectangular bounding box (FAST - DB query)
+                # 1 degree ≈ 69 miles, so convert search radius to degrees
+                search_radius_degrees = search_radius / 69.0
                 
-                for station in stations:
+                nearby_stations_qs = stations.filter(
+                    latitude__gte=point_lat - search_radius_degrees,
+                    latitude__lte=point_lat + search_radius_degrees,
+                    longitude__gte=point_lon - search_radius_degrees,
+                    longitude__lte=point_lon + search_radius_degrees
+                )[:150]  # Limit to top 150 cheapest in area
+                
+                # STAGE 2 & 3: Calculate distances for pre-filtered stations
+                candidates = []
+                for station in nearby_stations_qs:
+                    # Use fast approximation for initial filtering
+                    approx_distance = self._fast_distance_approximation(
+                        point_coords,
+                        station.coordinates
+                    )
+                    
+                    # Skip if too far (with 10% margin for approximation error)
+                    if approx_distance > search_radius * 1.1:
+                        continue
+                    
+                    # Calculate precise distance for candidates
                     distance_to_station = self._calculate_distance(
                         point_coords, 
                         station.coordinates
                     )
                     
                     if distance_to_station <= search_radius:
-                        # Calculate deviation (Project 1 intelligence)
+                        # Calculate deviation
                         deviation = self._calculate_deviation(
                             point_coords,
                             station.coordinates,
@@ -245,7 +273,7 @@ class RouteOptimizationService:
                         # Score: price + deviation penalty
                         score = float(station.retail_price) + (deviation * 0.1)
                         
-                        nearby_stations.append({
+                        candidates.append({
                             'station': station,
                             'distance': distance_to_station,
                             'deviation': deviation,
@@ -253,6 +281,7 @@ class RouteOptimizationService:
                         })
                 
                 # Select best station (lowest score)
+                nearby_stations = candidates
                 if nearby_stations:
                     best = min(nearby_stations, key=lambda x: x['score'])
                     station = best['station']
@@ -317,6 +346,29 @@ class RouteOptimizationService:
         cache.set(cache_key, distance, 86400)
         
         return distance
+
+    def _fast_distance_approximation(
+        self,
+        point1: Tuple[float, float],
+        point2: Tuple[float, float]
+    ) -> float:
+        """
+        Fast approximation of distance (10-100x faster than geodesic).
+        Accuracy: ±2% for distances < 500 miles.
+        
+        Uses Euclidean distance with latitude/longitude corrections.
+        Perfect for initial filtering before precise geodesic calculation.
+        """
+        lat1, lon1 = point1
+        lat2, lon2 = point2
+        
+        # Conversion degree -> miles (approximation)
+        # 1 degree latitude ≈ 69 miles
+        # 1 degree longitude varies with latitude (cos correction)
+        lat_diff = (lat2 - lat1) * 69.0
+        lon_diff = (lon2 - lon1) * 69.0 * abs(math.cos(math.radians((lat1 + lat2) / 2)))
+        
+        return math.sqrt(lat_diff**2 + lon_diff**2)
 
     def _calculate_deviation(
         self,

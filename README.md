@@ -148,4 +148,4 @@ poetry run python manage.py runserverServer at: **http://127.0.0.1:8000/**
 ## 👨‍💻 Author
 
 Israe KHOUI  
-israekhoui9@gmail.com
+israekhoui9@gmail.com / israekhoui10@gmail.com

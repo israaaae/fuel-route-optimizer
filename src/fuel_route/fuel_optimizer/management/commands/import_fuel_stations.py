@@ -36,16 +36,16 @@ class Command(BaseCommand):
     def handle(self, *args, **options):
         csv_file = options['csv_file']
 
-        self.stdout.write(self.style.WARNING(f'\n📂 Loading CSV from: {csv_file}\n'))
+        self.stdout.write(self.style.WARNING(f'\n Loading CSV from: {csv_file}\n'))
 
         try:
             df = pd.read_csv(csv_file)
         except FileNotFoundError:
-            raise CommandError(f'❌ File not found: {csv_file}')
+            raise CommandError(f' File not found: {csv_file}')
         except Exception as e:
-            raise CommandError(f'❌ Failed to parse CSV: {str(e)}')
+            raise CommandError(f' Failed to parse CSV: {str(e)}')
 
-        self.stdout.write(self.style.SUCCESS(f'✅ Loaded {len(df)} rows from CSV\n'))
+        self.stdout.write(self.style.SUCCESS(f' Loaded {len(df)} rows from CSV\n'))
 
         # STEP 1: Clean column names
         df = self._clean_column_names(df)
@@ -60,14 +60,14 @@ class Command(BaseCommand):
         df = self._validate_required_fields(df)
 
         self.stdout.write(self.style.SUCCESS(
-            f'\n✅ After cleaning: {len(df)} valid stations\n'
+            f'\n After cleaning: {len(df)} valid stations\n'
         ))
 
         # STEP 5: Skip existing stations
         df = self._skip_existing_stations(df)
 
         if len(df) == 0:
-            self.stdout.write(self.style.WARNING('⚠️  No new stations to import!\n'))
+            self.stdout.write(self.style.WARNING('  No new stations to import!\n'))
             return
 
         # STEP 6: Geocode if needed
@@ -76,11 +76,11 @@ class Command(BaseCommand):
         # STEP 7: Import to database
         self._import_to_database(df)
 
-        self.stdout.write(self.style.SUCCESS('\n🎉 Import completed successfully!\n'))
+        self.stdout.write(self.style.SUCCESS('\n Import completed successfully!\n'))
 
     def _clean_column_names(self, df):
         """Clean and standardize column names"""
-        self.stdout.write('🧹 Step 1: Cleaning column names...')
+        self.stdout.write(' Step 1: Cleaning column names...')
         
         df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
         
@@ -91,12 +91,12 @@ class Command(BaseCommand):
         }
         df.rename(columns=column_mapping, inplace=True)
         
-        self.stdout.write(self.style.SUCCESS('   ✓ Column names cleaned\n'))
+        self.stdout.write(self.style.SUCCESS('   [OK] Column names cleaned\n'))
         return df
 
     def _clean_data(self, df):
         """COMPLETE data cleaning"""
-        self.stdout.write('🧹 Step 2: Cleaning data fields...')
+        self.stdout.write(' Step 2: Cleaning data fields...')
         
         initial_count = len(df)
         
@@ -127,15 +127,15 @@ class Command(BaseCommand):
         removed = initial_count - len(df)
         if removed > 0:
             self.stdout.write(self.style.WARNING(
-                f'   ⚠️  Removed {removed} rows with invalid data'
+                f'     Removed {removed} rows with invalid data'
             ))
-        self.stdout.write(self.style.SUCCESS('   ✓ Data cleaned\n'))
+        self.stdout.write(self.style.SUCCESS('   [OK] Data cleaned\n'))
         
         return df
 
     def _handle_duplicates(self, df):
         """Handle duplicate OPIS IDs - keep cheapest price"""
-        self.stdout.write('🔍 Step 3: Handling duplicates...')
+        self.stdout.write(' Step 3: Handling duplicates...')
         
         initial_count = len(df)
         
@@ -146,22 +146,22 @@ class Command(BaseCommand):
         removed = initial_count - len(df)
         if removed > 0:
             self.stdout.write(self.style.WARNING(
-                f'   ⚠️  Removed {removed} duplicate stations (kept cheapest prices)'
+                f'     Removed {removed} duplicate stations (kept cheapest prices)'
             ))
-        self.stdout.write(self.style.SUCCESS('   ✓ Duplicates handled\n'))
+        self.stdout.write(self.style.SUCCESS('   [OK] Duplicates handled\n'))
         
         return df
 
     def _validate_required_fields(self, df):
         """Validate all required fields are present"""
-        self.stdout.write('✔️  Step 4: Validating required fields...')
+        self.stdout.write('[OK]  Step 4: Validating required fields...')
         
         required_fields = ['opis_id', 'name', 'city', 'state', 'retail_price']
         missing_fields = [f for f in required_fields if f not in df.columns]
         
         if missing_fields:
             raise CommandError(
-                f'❌ Missing required columns: {", ".join(missing_fields)}'
+                f' Missing required columns: {", ".join(missing_fields)}'
             )
         
         initial_count = len(df)
@@ -170,15 +170,15 @@ class Command(BaseCommand):
         removed = initial_count - len(df)
         if removed > 0:
             self.stdout.write(self.style.WARNING(
-                f'   ⚠️  Removed {removed} rows with missing required fields'
+                f'     Removed {removed} rows with missing required fields'
             ))
-        self.stdout.write(self.style.SUCCESS('   ✓ Required fields validated\n'))
+        self.stdout.write(self.style.SUCCESS('   [OK] Required fields validated\n'))
         
         return df
 
     def _skip_existing_stations(self, df):
         """Skip stations already in database"""
-        self.stdout.write('🔍 Step 5: Checking for existing stations...')
+        self.stdout.write(' Step 5: Checking for existing stations...')
         
         csv_ids = df['opis_id'].tolist()
         existing_ids = set(
@@ -193,26 +193,26 @@ class Command(BaseCommand):
         skipped = initial_count - len(df)
         if skipped > 0:
             self.stdout.write(self.style.WARNING(
-                f'   ⏭️  Skipping {skipped} existing stations'
+                f'   [OK]  Skipping {skipped} existing stations'
             ))
-        self.stdout.write(self.style.SUCCESS(f'   ✓ {len(df)} new stations to process\n'))
+        self.stdout.write(self.style.SUCCESS(f'   [OK] {len(df)} new stations to process\n'))
         
         return df
 
     def _geocode_stations(self, df):
         """Geocode stations to get lat/lon coordinates"""
-        self.stdout.write('🌍 Step 6: Geocoding stations...')
+        self.stdout.write(' Step 6: Geocoding stations...')
         self.stdout.write('   This may take 5-10 minutes for all stations\n')
         
         # Check if lat/lon already in CSV
         if 'latitude' in df.columns and 'longitude' in df.columns:
-            self.stdout.write('   ℹ️  Using existing lat/lon from CSV')
+            self.stdout.write('     Using existing lat/lon from CSV')
             df['latitude'] = pd.to_numeric(df['latitude'], errors='coerce')
             df['longitude'] = pd.to_numeric(df['longitude'], errors='coerce')
             df = df[df['latitude'].notna() & df['longitude'].notna()]
             df = df[(df['latitude'] >= -90) & (df['latitude'] <= 90)]
             df = df[(df['longitude'] >= -180) & (df['longitude'] <= 180)]
-            self.stdout.write(self.style.SUCCESS('   ✓ Coordinates validated\n'))
+            self.stdout.write(self.style.SUCCESS('   [OK] Coordinates validated\n'))
             return df
         
         # Initialize geocoder with rate limiting
@@ -243,22 +243,22 @@ class Command(BaseCommand):
             
             # Progress indicator
             if (idx + 1) % 100 == 0:
-                self.stdout.write(f'   📍 Geocoded {idx + 1}/{len(df)} stations...')
+                self.stdout.write(f'    Geocoded {idx + 1}/{len(df)} stations...')
         
         if failed_count > 0:
             self.stdout.write(self.style.WARNING(
-                f'\n   ⚠️  Failed to geocode {failed_count} stations'
+                f'\n     Failed to geocode {failed_count} stations'
             ))
         
         self.stdout.write(self.style.SUCCESS(
-            f'   ✓ Successfully geocoded {len(geocoded_data)} stations\n'
+            f'   [OK] Successfully geocoded {len(geocoded_data)} stations\n'
         ))
         
         return pd.DataFrame(geocoded_data)
 
     def _import_to_database(self, df):
         """Import cleaned data to database"""
-        self.stdout.write(f'💾 Step 7: Importing {len(df)} stations to database...')
+        self.stdout.write(f' Step 7: Importing {len(df)} stations to database...')
         
         stations = []
         skipped = 0
@@ -281,12 +281,12 @@ class Command(BaseCommand):
         
         if skipped > 0:
             self.stdout.write(self.style.WARNING(
-                f'   ⚠️  Skipped {skipped} invalid rows'
+                f'     Skipped {skipped} invalid rows'
             ))
         
         # Bulk create for performance (1000 records per batch)
         FuelStation.objects.bulk_create(stations, batch_size=1000)
         
         self.stdout.write(self.style.SUCCESS(
-            f'   ✓ Successfully imported {len(stations)} fuel stations'
+            f'   [OK] Successfully imported {len(stations)} fuel stations'
         ))
