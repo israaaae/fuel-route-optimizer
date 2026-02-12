@@ -25,11 +25,6 @@ cd C:\Users\Israe\fuel_route
 # Install dependencies
 poetry install
 
-# Activate environment
-poetry shell### 2. Environment Setup
-
-# Copy environment template
-copy .env.example .env
 
 # Edit .env and add your MapQuest API key**Get FREE MapQuest API Key:**
 1. Go to: https://developer.mapquest.com/
