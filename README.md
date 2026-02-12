@@ -6,9 +6,8 @@ Django REST API for optimal fuel route planning within the USA.
 
 ✅ **Single API Call**: MapQuest API (geocoding + routing in ONE call)  
 ✅ **Smart Fuel Optimization**: Deviation scoring + bounding box filtering  
-✅ **Complete Data Cleaning**: Handles duplicates, invalid prices, missing data  
-✅ **Fast Performance**: Database caching + optimized queries (<2 seconds)  
-✅ **Production Ready**: Validation, error handling, logging  
+✅ **Complete Data Cleaning**: Handles duplicates, invalid prices, missing data ...  
+✅ **Fast Performance**: Database caching + optimized queries (<4 seconds)  
 ✅ **JSON Response**: GeoJSON route + fuel stops + total cost  
 
 **Vehicle Specifications** (per assignment):
@@ -44,19 +43,23 @@ copy .env.example .env
 cd src\fuel_route
 
 # Run migrations
+poetry run python manage.py makemigration
 poetry run python manage.py migrate
 
 # Create cache table
-poetry run python manage.py createcachetable### 4. Import Fuel Station Data
+poetry run python manage.py createcachetable
+
+### 4. Import Fuel Station Data
 
 **Copy CSV file to project root first!**
 
 # Import with complete data cleaning
-poetry run python manage.py import_fuel_stations ..\..\fuel-prices-for-be-assessment.csvThis takes ~5-10 minutes to geocode all stations.
+poetry run python manage.py import_fuel_stations ..\..\fuel-prices-with-coordinates.csv
+
 
 ### 5. Run Server
 
-poetry run python manage.py runserverServer at: **http://127.0.0.1:8000/**
+poetry run python manage.py runserver at: **http://127.0.0.1:8000/**
 
 ---
 
@@ -70,7 +73,7 @@ poetry run python manage.py runserverServer at: **http://127.0.0.1:8000/**
 {
     "start": "New York, NY",
     "end": "Los Angeles, CA"
-}**Response:**
+}**Example Response (Not Real Output):**
 {
     "route_geometry": {
         "type": "LineString",
@@ -119,7 +122,7 @@ poetry run python manage.py runserverServer at: **http://127.0.0.1:8000/**
 {
     "start": "New York, NY",
     "end": "Los Angeles, CA"
-}5. Send → Get response in <2 seconds!
+}5. Send → Get response in <4 seconds!
 
 **Visualize Route:**
 1. Copy `route_geometry` from response
@@ -127,23 +130,7 @@ poetry run python manage.py runserverServer at: **http://127.0.0.1:8000/**
 3. Paste in left panel
 4. See route on map!
 
----
 
-## 📋 Assignment Compliance
-
-✅ Django 5.1.5 (latest stable)  
-✅ USA locations (start/end)  
-✅ Returns route map (GeoJSON)  
-✅ Optimal fuel stops (cost-effective with deviation scoring)  
-✅ 500 mile range  
-✅ 10 MPG calculation  
-✅ Uses fuel prices CSV  
-✅ Free API (MapQuest)  
-✅ Fast response (<2 seconds)  
-✅ **1 API call only** (IDEAL per requirements)  
-✅ Postman demo ready  
-
----
 
 ## 👨‍💻 Author
 
