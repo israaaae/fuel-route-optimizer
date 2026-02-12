@@ -43,8 +43,8 @@ copy .env.example .env
 cd src\fuel_route
 
 # Run migrations
-poetry run python manage.py makemigration
-poetry run python manage.py migrate
+1. poetry run python manage.py makemigration
+2. poetry run python manage.py migrate
 
 # Create cache table
 poetry run python manage.py createcachetable
