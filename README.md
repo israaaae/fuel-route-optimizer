@@ -37,9 +37,9 @@ poetry install
 
 cd src\fuel_route
 
-# Run migrations
-1. poetry run python manage.py makemigration
-2. poetry run python manage.py migrate
+# Run migrations  
+poetry run python manage.py makemigration  
+poetry run python manage.py migrate
 
 # Create cache table
 poetry run python manage.py createcachetable
@@ -68,7 +68,8 @@ poetry run python manage.py runserver at: **http://127.0.0.1:8000/**
 {
     "start": "New York, NY",
     "end": "Los Angeles, CA"
-}**Example Response (Not Real Output):**
+}  
+**Example Response (Not Real Output):**  
 {
     "route_geometry": {
         "type": "LineString",
